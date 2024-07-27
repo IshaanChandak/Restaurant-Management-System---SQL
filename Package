@@ -1,0 +1,152 @@
+-- Creating Packages
+CREATE OR REPLACE PACKAGE CustomerPackage AS
+ PROCEDURE InsertNewCustomer(
+ p_CustomerID NUMBER,
+ p_CustomerName VARCHAR2,
+ p_OrderDate DATE,
+ p_TotalAmount NUMBER
+ );
+ PROCEDURE ModifyEmployeeSalary(
+ p_EmployeeID NUMBER,
+ p_NewSalary NUMBER
+ );
+END CustomerPackage;
+/
+
+-- Creating Package Body
+CREATE OR REPLACE PACKAGE BODY CustomerPackage AS
+ -- Procedure to insert new customer
+ PROCEDURE InsertNewCustomer(
+ p_CustomerID NUMBER,
+ p_CustomerName VARCHAR2,
+ p_OrderDate DATE,
+ p_TotalAmount NUMBER
+ ) IS
+ BEGIN
+ -- Actual insert
+ INSERT INTO Orders(OrderID, CustomerName, OrderDate, TotalAmount)
+ VALUES (p_CustomerID, p_CustomerName, p_OrderDate, p_TotalAmount);
+ END InsertNewCustomer;
+ -- Procedure to modify employee salary
+ PROCEDURE ModifyEmployeeSalary(
+ p_EmployeeID NUMBER,
+ p_NewSalary NUMBER
+ ) IS
+ BEGIN
+ -- Actual salary modification
+ UPDATE Employees
+ SET SalaryPM = p_NewSalary
+ WHERE EmployeeID = p_EmployeeID;
+ END ModifyEmployeeSalary;
+END CustomerPackage;
+/
+
+-- Trigger
+CREATE OR REPLACE TRIGGER BeforeInsertCustomer
+BEFORE INSERT ON Orders
+FOR EACH ROW
+DECLARE
+BEGIN
+ DBMS_OUTPUT.PUT_LINE('Inserting new customer with Id: ' || :NEW.OrderID);
+ -- Add any other checks or validations here if needed
+ IF :NEW.OrderID IS NULL OR :NEW.OrderID <= 0 THEN
+ RAISE_APPLICATION_ERROR(-20001, 'Entered ID is not valid');
+ END IF;
+END;
+/
+
+-- Trigger
+CREATE OR REPLACE TRIGGER AfterInsertCustomer
+AFTER INSERT ON Orders
+FOR EACH ROW
+DECLARE
+BEGIN
+ DBMS_OUTPUT.PUT_LINE('New customer inserted');
+END;
+/
+
+-- Trigger
+CREATE OR REPLACE TRIGGER BeforeUpdateEmployeeSalary
+BEFORE UPDATE OF SalaryPM ON Employees
+FOR EACH ROW
+DECLARE
+BEGIN
+ DBMS_OUTPUT.PUT_LINE('The details before modification: ' ||
+ 'EmployeeID: ' || :OLD.EmployeeID ||
+ ', Name: ' || :OLD.FirstName || ' ' || :OLD.LastName ||
+ ', SalaryPM: ' || :OLD.SalaryPM);
+ 
+ -- Check if the employee ID is valid
+ IF :NEW.EmployeeID IS NULL OR :NEW.EmployeeID <= 0 THEN
+ RAISE_APPLICATION_ERROR(-20001, 'Incorrect or invalid ID number provided.');
+ END IF;
+END;
+/
+
+-- Trigger
+CREATE OR REPLACE TRIGGER AfterUpdateEmployeeSalary
+AFTER UPDATE OF SalaryPM ON Employees
+FOR EACH ROW
+DECLARE
+BEGIN
+ DBMS_OUTPUT.PUT_LINE('The Salary has been modified.');
+END;
+/
+
+-- Calling Procedure
+DECLARE
+ v_CustomerID NUMBER;
+ v_CustomerName VARCHAR2(50);
+ v_OrderDate DATE;
+ v_TotalAmount NUMBER;
+ -- Define a table type for customer data
+ TYPE CustomerRecord IS RECORD (
+ CustomerID NUMBER,
+ CustomerName VARCHAR2(50),
+ OrderDate DATE,
+ TotalAmount NUMBER
+ );
+ -- Define a table of customer data
+ TYPE CustomerTable IS TABLE OF CustomerRecord;
+ -- Populate the table with customer data
+ v_Customers CustomerTable := CustomerTable(
+ CustomerRecord(1020, 'Dev Singh', TO_DATE('2023-12-05', 'YYYY-MM-DD'), 550.00),
+ CustomerRecord(1021, 'Venkatesh Saini', TO_DATE('2023-12-06', 'YYYY-MM-DD'), 750.00),
+ CustomerRecord(1022, 'Ronit Jain', TO_DATE('2023-12-07', 'YYYY-MM-DD'), 700.00)
+ );
+BEGIN
+ -- Loop through the table and call InsertNewCustomer for each customer
+ FOR i IN v_Customers.FIRST .. v_Customers.LAST
+ LOOP
+ v_CustomerID := v_Customers(i).CustomerID;
+ v_CustomerName := v_Customers(i).CustomerName;
+ v_OrderDate := v_Customers(i).OrderDate;
+ v_TotalAmount := v_Customers(i).TotalAmount;
+ CustomerPackage.InsertNewCustomer(v_CustomerID, v_CustomerName, v_OrderDate, 
+v_TotalAmount);
+ END LOOP;
+END;
+/
+
+-- Calling Procedure
+DECLARE
+ TYPE EmployeeRecord IS RECORD (
+ EmployeeID NUMBER,
+ NewSalary NUMBER
+ );
+ TYPE EmployeeTable IS TABLE OF EmployeeRecord;
+ v_Employees EmployeeTable := EmployeeTable(
+ EmployeeRecord(1, 56000.00),
+ EmployeeRecord(2, 28000.00),
+ EmployeeRecord(3, 62000.00)
+ );
+BEGIN
+ -- Loop through the table and call ModifyEmployeeSalary for each employee
+ FOR i IN v_Employees.FIRST .. v_Employees.LAST
+ LOOP
+ CustomerPackage.ModifyEmployeeSalary(v_Employees(i).EmployeeID, v_Employees(i).NewSalary);
+ END LOOP;
+END;
+/
+
+
